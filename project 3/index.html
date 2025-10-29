@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Gym Management System</title>
+	<link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+	<header class="app-header">
+		<h1>Gym Management System</h1>
+	</header>
+	<main class="container">
+		<section class="card">
+			<div class="toolbar">
+				<button id="tabLogin" class="success">Login</button>
+				<button id="tabRegister" class="secondary">Register</button>
+			</div>
+
+			<div id="loginPane">
+				<h2>Login</h2>
+				<form id="loginForm">
+					<label>Email
+						<input type="email" id="email" required />
+					</label>
+					<label>Password
+						<input type="password" id="password" required />
+					</label>
+					<button type="submit">Login</button>
+				</form>
+			</div>
+
+			<div id="registerPane" style="display:none">
+				<h2>Register</h2>
+				<form id="registerForm">
+					<label>Email
+						<input type="email" id="rEmail" required />
+					</label>
+					<label>Password (min 6 chars)
+						<input type="password" id="rPassword" required minlength="6" />
+					</label>
+					<button type="submit" class="success">Create Account</button>
+				</form>
+				<p class="muted">Note: New users start with role <span class="tag">user</span>. Admin can change roles later.</p>
+			</div>
+		</section>
+
+		<section class="card">
+			<h2>About Our Gym</h2>
+			<p>Modern equipment, certified trainers, custom diet plans, and group classes.</p>
+		</section>
+	</main>
+
+	<footer class="app-footer">&copy; <span id="year"></span> Gym Management</footer>
+
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+	<script src="assets/js/firebase.js"></script>
+	<script src="assets/js/services/logging.js"></script>
+	<script src="assets/js/services/auth.js"></script>
+	<script src="assets/js/services/db.js"></script>
+	<script src="assets/js/services/notifications.js"></script>
+	<script src="assets/js/pages/common.js"></script>
+	<script>
+		// Minimal app config to auto-admin your UID
+		window.AppConfig = {
+			adminUids: ["xc7bwLPRaJdwXiXf6lyibpCDEbs1"],
+		};
+	</script>
+	<script>
+		document.getElementById('year').textContent = new Date().getFullYear();
+		const loginForm = document.getElementById('loginForm');
+		const registerForm = document.getElementById('registerForm');
+		const tabLogin = document.getElementById('tabLogin');
+		const tabRegister = document.getElementById('tabRegister');
+		const loginPane = document.getElementById('loginPane');
+		const registerPane = document.getElementById('registerPane');
+
+		function showLogin() { loginPane.style.display = ''; registerPane.style.display = 'none'; tabLogin.classList.add('success'); tabRegister.classList.remove('success'); }
+		function showRegister() { loginPane.style.display = 'none'; registerPane.style.display = ''; tabRegister.classList.add('success'); tabLogin.classList.remove('success'); }
+		tabLogin.addEventListener('click', showLogin);
+		tabRegister.addEventListener('click', showRegister);
+
+		loginForm.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const email = document.getElementById('email').value.trim();
+			const password = document.getElementById('password').value;
+			try {
+				const user = await AuthService.signIn(email, password);
+				await Common.ensureUserProfile(user.uid, { email });
+				await Common.routeByRole(user.uid);
+			} catch (err) {
+				alert(err.message);
+			}
+		});
+
+		registerForm.addEventListener('submit', async (e) => {
+			e.preventDefault();
+			const email = document.getElementById('rEmail').value.trim();
+			const password = document.getElementById('rPassword').value;
+			try {
+				const user = await AuthService.signUp(email, password);
+				await Common.ensureUserProfile(user.uid, { email, role: 'user' });
+				await Common.routeByRole(user.uid);
+			} catch (err) {
+				alert((err && (err.code || err.message)) || 'Registration failed');
+			}
+		});
+
+		// default view
+		showLogin();
+	</script>
+</body>
+</html>
+
+

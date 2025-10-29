@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Member - Gym Management</title>
+	<link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+	<header class="app-header">
+		<h2>Member Portal</h2>
+		<div class="toolbar">
+			<button id="signOut">Sign Out</button>
+		</div>
+	</header>
+	<main class="container">
+		<section class="card">
+			<h3>Your Receipts</h3>
+			<table id="receiptsTable"><thead><tr><th>Month</th><th>Amount</th><th>Method</th><th>File</th></tr></thead><tbody></tbody></table>
+		</section>
+
+		<section class="card">
+			<h3>Notifications</h3>
+			<ul id="notifications"></ul>
+		</section>
+
+		<section class="card">
+			<h3>Dietary Details</h3>
+			<p class="muted">Your trainer will share personalized diet plans here. (Placeholder)</p>
+		</section>
+
+		<section class="card">
+			<h3>Supplement Store</h3>
+			<p class="muted">Browse recommended supplements. (Placeholder)</p>
+		</section>
+	</main>
+	<footer class="app-footer">Member &middot; Gym Management</footer>
+
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+	<script src="assets/js/firebase.js"></script>
+	<script src="assets/js/services/logging.js"></script>
+	<script src="assets/js/services/auth.js"></script>
+	<script src="assets/js/services/db.js"></script>
+	<script>
+		firebase.auth().onAuthStateChanged(async (u) => {
+			if (!u) return window.location.href = 'index.html';
+			const role = await AuthService.getUserRole(u.uid);
+			if (role !== 'member') return window.location.href = 'index.html';
+			loadReceipts(u); loadNotifications(u);
+		});
+
+		document.getElementById('signOut').addEventListener('click', () => AuthService.signOut().then(() => window.location.href = 'index.html'));
+
+		async function loadReceipts(u) {
+			const tbody = document.querySelector('#receiptsTable tbody');
+			tbody.innerHTML = '';
+			const snap = await DbService._db.collection('receipts').where('memberUid','==',u.uid).orderBy('createdAt','desc').get();
+			for (const d of snap.docs) {
+				const r = d.data();
+				const tr = document.createElement('tr');
+				tr.innerHTML = `<td>${r.month}</td><td>₹${r.amount}</td><td>${r.method}</td><td>${r.fileUrl?`<a href="${r.fileUrl}" target="_blank">file</a>`:''}</td>`;
+				tbody.appendChild(tr);
+			}
+		}
+
+		async function loadNotifications(u) {
+			const ul = document.getElementById('notifications');
+			ul.innerHTML = '';
+			const items = await DbService.listNotifications(u.uid);
+			for (const n of items) {
+				const li = document.createElement('li');
+				li.textContent = `${n.title}: ${n.body}`;
+				ul.appendChild(li);
+			}
+		}
+	</script>
+</body>
+</html>
+
+

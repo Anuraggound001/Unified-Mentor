@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart To-Do List | Task Manager</title>
+    <meta name="description" content="A beautiful and responsive to-do list application with advanced features">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Smart To-Do List">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%236366f1' rx='20'/><text x='50' y='50' text-anchor='middle' dy='.35em' font-size='60' fill='white'>✓</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <h1 class="app-title">
+                <i class="fas fa-tasks"></i>
+                Smart To-Do List
+            </h1>
+            <p class="app-subtitle">Organize your tasks efficiently</p>
+        </header>
+
+        <!-- Statistics Section -->
+        <section class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalTasks">0</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedTasks">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingTasks">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </section>
+
+        <!-- Task Input Section -->
+        <section class="task-input-section">
+            <div class="input-container">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="taskInput" 
+                        placeholder="What needs to be done?"
+                        maxlength="200"
+                        aria-label="Task description"
+                    >
+                    <button id="addTaskBtn" class="add-btn" aria-label="Add new task">
+                        <i class="fas fa-plus"></i>
+                        Add Task
+                    </button>
+                </div>
+                
+                <!-- Advanced Options -->
+                <div class="advanced-options">
+                    <div class="option-group">
+                        <label for="taskPriority">Priority:</label>
+                        <select id="taskPriority" aria-label="Task priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label for="taskCategory">Category:</label>
+                        <select id="taskCategory" aria-label="Task category">
+                            <option value="personal">Personal</option>
+                            <option value="work">Work</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label for="taskDate">Due Date:</label>
+                        <input type="date" id="taskDate" aria-label="Due date">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message" role="alert" aria-live="polite"></div>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="filter-section">
+            <div class="filter-buttons">
+                <button class="filter-btn active" data-filter="all">All Tasks</button>
+                <button class="filter-btn" data-filter="pending">Pending</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+            </div>
+            
+            <div class="sort-options">
+                <label for="sortBy">Sort by:</label>
+                <select id="sortBy" aria-label="Sort tasks by">
+                    <option value="created">Created Date</option>
+                    <option value="priority">Priority</option>
+                    <option value="dueDate">Due Date</option>
+                    <option value="category">Category</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Task List Section -->
+        <section class="task-list-section">
+            <div class="task-list-header">
+                <h2>Your Tasks</h2>
+                <button id="clearAllBtn" class="clear-all-btn" aria-label="Clear all completed tasks">
+                    <i class="fas fa-trash"></i>
+                    Clear Completed
+                </button>
+            </div>
+            
+            <ul id="taskList" class="task-list" role="list">
+                <!-- Tasks will be dynamically inserted here -->
+            </ul>
+            
+            <div id="emptyState" class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No tasks yet!</h3>
+                <p>Add your first task above to get started</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal" role="dialog" aria-labelledby="editModalTitle" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Edit Task</h3>
+                <button class="close-btn" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="editTaskInput">Task Description:</label>
+                    <input type="text" id="editTaskInput" maxlength="200">
+                </div>
+                
+                <div class="modal-options">
+                    <div class="option-group">
+                        <label for="editTaskPriority">Priority:</label>
+                        <select id="editTaskPriority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label for="editTaskCategory">Category:</label>
+                        <select id="editTaskCategory">
+                            <option value="personal">Personal</option>
+                            <option value="work">Work</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option-group">
+                        <label for="editTaskDate">Due Date:</label>
+                        <input type="date" id="editTaskDate">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveEditBtn" class="save-btn">Save Changes</button>
+                <button id="cancelEditBtn" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Admin - Gym Management</title>
+	<link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+	<header class="app-header">
+		<h2>Admin Dashboard</h2>
+		<div class="toolbar">
+			<button id="signOut">Sign Out</button>
+		</div>
+	</header>
+	<main class="container">
+		<section class="card">
+			<h3>Members</h3>
+			<div class="grid grid-3">
+				<label>Name <input id="mName" /></label>
+				<label>Email <input id="mEmail" /></label>
+				<label>Phone <input id="mPhone" /></label>
+			</div>
+			<div class="toolbar">
+				<button id="addMember">Add Member</button>
+				<button id="refreshMembers" class="secondary">Refresh</button>
+				<button id="exportMembers" class="secondary">Export CSV</button>
+			</div>
+			<table id="membersTable"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead><tbody></tbody></table>
+		</section>
+
+		<section class="card">
+			<h3>Billing</h3>
+			<div class="grid grid-3">
+				<label>Member ID <input id="bMemberId" /></label>
+				<label>Month (YYYY-MM) <input id="bMonth" /></label>
+				<label>Amount <input id="bAmount" type="number" /></label>
+			</div>
+			<div class="grid grid-3">
+				<label>Method
+					<select id="bMethod">
+						<option>Cash</option>
+						<option>UPI</option>
+						<option>Card</option>
+					</select>
+				</label>
+				<label>Notes <input id="bNotes" /></label>
+				<label>Attach File <input id="bFile" type="file" /></label>
+			</div>
+			<div class="toolbar">
+				<button id="createBill" class="success">Create Receipt</button>
+				<button id="exportReceipts" class="secondary">Export Receipts CSV</button>
+			</div>
+			<table id="receiptsTable"><thead><tr><th>Member</th><th>Month</th><th>Amount</th><th>Method</th><th>File</th></tr></thead><tbody></tbody></table>
+		</section>
+
+		<section class="card">
+			<h3>Notifications</h3>
+			<div class="grid grid-3">
+				<label>Member UID <input id="nUid" /></label>
+				<label>Title <input id="nTitle" /></label>
+				<label>Body <input id="nBody" /></label>
+			</div>
+			<button id="sendNotification">Send</button>
+		</section>
+	</main>
+	<footer class="app-footer">Admin &middot; Gym Management</footer>
+
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-storage-compat.js"></script>
+	<script src="assets/js/firebase.js"></script>
+	<script src="assets/js/services/logging.js"></script>
+	<script src="assets/js/services/auth.js"></script>
+	<script src="assets/js/services/db.js"></script>
+	<script src="assets/js/services/receipts.js"></script>
+	<script src="assets/js/services/notifications.js"></script>
+	<script>
+		// Auth guard
+		firebase.auth().onAuthStateChanged(async (u) => {
+			if (!u) return window.location.href = 'index.html';
+			const role = await AuthService.getUserRole(u.uid);
+			if (role !== 'admin') return window.location.href = 'index.html';
+			loadMembers(); loadReceipts();
+		});
+
+		document.getElementById('signOut').addEventListener('click', () => AuthService.signOut().then(() => window.location.href = 'index.html'));
+
+		async function loadMembers() {
+			const tbody = document.querySelector('#membersTable tbody');
+			tbody.innerHTML = '';
+			const members = await DbService.listMembers();
+			for (const m of members) {
+				const tr = document.createElement('tr');
+				tr.innerHTML = `<td>${m.name||''}</td><td>${m.email||''}</td><td>${m.phone||''}</td><td><button data-id="${m.id}" class="del">Delete</button></td>`;
+				tbody.appendChild(tr);
+			}
+			Array.from(document.querySelectorAll('button.del')).forEach(btn => btn.addEventListener('click', async (e) => {
+				await DbService.deleteMember(e.target.getAttribute('data-id'));
+				loadMembers();
+			}));
+		}
+
+		document.getElementById('addMember').addEventListener('click', async () => {
+			const name = document.getElementById('mName').value.trim();
+			const email = document.getElementById('mEmail').value.trim();
+			const phone = document.getElementById('mPhone').value.trim();
+			if (!name) return alert('Name is required');
+			await DbService.addMember({ name, email, phone });
+			loadMembers();
+		});
+		document.getElementById('refreshMembers').addEventListener('click', loadMembers);
+		document.getElementById('exportMembers').addEventListener('click', async () => {
+			const members = await DbService.listMembers(1000);
+			const header = ['id','name','email','phone'];
+			const rows = members.map(m => [m.id, m.name||'', m.email||'', m.phone||'']);
+			const csv = [header.join(','), ...rows.map(r => r.map(v => JSON.stringify(v)).join(','))].join('\n');
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+			a.download = 'members.csv'; a.click();
+			URL.revokeObjectURL(a.href);
+		});
+
+		async function loadReceipts() {
+			const tbody = document.querySelector('#receiptsTable tbody');
+			tbody.innerHTML = '';
+			const snap = await DbService._db.collection('receipts').orderBy('createdAt','desc').limit(100).get();
+			for (const d of snap.docs) {
+				const r = { id: d.id, ...d.data() };
+				const tr = document.createElement('tr');
+				tr.innerHTML = `<td>${r.memberId}</td><td>${r.month}</td><td>₹${r.amount}</td><td>${r.method}</td><td>${r.fileUrl?`<a href="${r.fileUrl}" target="_blank">file</a>`:''}</td>`;
+				tbody.appendChild(tr);
+			}
+		}
+
+		document.getElementById('createBill').addEventListener('click', async () => {
+			const memberId = document.getElementById('bMemberId').value.trim();
+			const month = document.getElementById('bMonth').value.trim();
+			const amount = Number(document.getElementById('bAmount').value || 0);
+			const method = document.getElementById('bMethod').value;
+			const notes = document.getElementById('bNotes').value.trim();
+			const file = document.getElementById('bFile').files[0];
+			if (!memberId || !month || !amount) return alert('Member, month, and amount required');
+			const { id } = await ReceiptsService.createReceipt({ memberId, month, amount, method, notes, file });
+			await NotificationService.notifyUser('', 'New Receipt', `Receipt ${id} created for ${memberId}`, { memberId });
+			loadReceipts();
+		});
+
+		document.getElementById('exportReceipts').addEventListener('click', async () => {
+			const snap = await DbService._db.collection('receipts').orderBy('createdAt','desc').limit(1000).get();
+			const receipts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+			const csv = await ReceiptsService.exportReceiptsCsv(receipts);
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+			a.download = 'receipts.csv'; a.click();
+			URL.revokeObjectURL(a.href);
+		});
+
+		document.getElementById('sendNotification').addEventListener('click', async () => {
+			const uid = document.getElementById('nUid').value.trim();
+			const title = document.getElementById('nTitle').value.trim();
+			const body = document.getElementById('nBody').value.trim();
+			if (!uid || !title || !body) return alert('All fields required');
+			await NotificationService.notifyUser(uid, title, body);
+			alert('Sent');
+		});
+	</script>
+</body>
+</html>
+
+

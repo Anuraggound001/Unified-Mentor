@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Tests - Gym Management</title>
+	<link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+	<main class="container">
+		<section class="card">
+			<h3>Unit Tests</h3>
+			<pre id="out"></pre>
+		</section>
+	</main>
+	<script>
+		function assert(name, cond) { document.getElementById('out').textContent += `${cond?'✓':'✗'} ${name}\n`; }
+	</script>
+	<script>
+		// Test: CSV export formatting
+		(function(){
+			const receipts = [{ id:'1', memberId:'m1', month:'2025-10', amount:500, method:'Cash', createdAt:null }];
+			const header = ['id','memberId','month','amount','method','createdAt'];
+			const rows = receipts.map(r => [r.id, r.memberId, r.month, r.amount, r.method, '']);
+			const csv = [header.join(','), ...rows.map(r => r.map(v => JSON.stringify(v ?? '')).join(','))].join('\n');
+			assert('CSV has header', csv.startsWith('id,memberId,month'));
+			assert('CSV has one row', csv.split('\n').length === 2);
+		})();
+	</script>
+</body>
+</html>
+
+
